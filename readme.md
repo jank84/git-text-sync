@@ -9,7 +9,7 @@ clones a repo using a personal git token and displays containing text files, all
 - Open files with the system's default editor on double-click.
 - Add new files and delete existing files directly from the GUI.
 
-https://github.com/jank84/git-text-sync/assets/3295430/b9604013-0df5-4240-988d-acc1167d6989
+![git-sync-demo](https://github.com/jank84/git-text-sync/assets/3295430/b9604013-0df5-4240-988d-acc1167d6989)
 
 ## Environment Variables
 The application requires several environment variables to be set. These variables should be defined in a `.env` file. You can copy the `.env.template` file and fill in the necessary values.
@@ -41,7 +41,7 @@ search_folders=".;./subfolder/"
    ```
 4. Copy `.env.template` to `.env` and update the environment variables as per your setup.
 5. Go to https://github.com/settings/personal-access-tokens/new to create a new personal access token and copy it into the `.env` file `git_access_token`.
-![Alt text](<New Fine-grained Personal Access Token.png>)
+![New Fine-grained Personal Access Token](<New Fine-grained Personal Access Token.png>)
 6. provide a repo with text files in the `.env` under `repo`. (token need write permissions for this repo)
 
 ## Running the Application
