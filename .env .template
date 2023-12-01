@@ -1,0 +1,10 @@
+# Personal Access Token for Git
+git_access_token=github_pat_<YOUR-TOKEN-SEE-New Fine-grained Personal Access Token>
+# Repository URL (token need write permissions for this repo)
+repo=<https://github.com/<username>/<project>>
+# App name to show in the app title bar
+app_name="git sync: [github.com/<username>/<project>]"
+# File Extensions to Display (separated by semicolon)
+file_extensions='.txt;.md'
+# Folders to Search for Files (separated by semicolon)
+search_folders=".;./subfolder/"
