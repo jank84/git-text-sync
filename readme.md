@@ -9,14 +9,13 @@ clones a repo using a personal git token and displays containing text files, all
 - Open files with the system's default editor on double-click.
 - Add new files and delete existing files directly from the GUI.
 
-![git-sync-demo.mp4](https://github.com/jank84/git-text-sync/raw/main/git-sync-demo.mp4)
-<video src="https://github.com/jank84/git-text-sync/raw/main/git-sync-demo.mp4" controls title="Title"></video>
+https://github.com/jank84/git-text-sync/assets/3295430/b9604013-0df5-4240-988d-acc1167d6989
 
 ## Environment Variables
 The application requires several environment variables to be set. These variables should be defined in a `.env` file. You can copy the `.env.template` file and fill in the necessary values.
 
 ### `.env.template`
-```
+```bash
 # Personal Access Token for Git
 git_access_token=github_pat_<YOUR-TOKEN-SEE-New Fine-grained Personal Access Token>
 # Repository URL (token need write permissions for this repo)
