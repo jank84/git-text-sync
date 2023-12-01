@@ -10,6 +10,8 @@ clones a repo using a personal git token and displays containing text files, all
 - Add new files and delete existing files directly from the GUI.
 
 ![git-sync-demo](https://github.com/jank84/git-text-sync/assets/3295430/b9604013-0df5-4240-988d-acc1167d6989)
+<video width="630" height="300" src="https://github.com/jank84/git-text-sync/assets/3295430/b9604013-0df5-4240-988d-acc1167d6989"></video>
+
 
 ## Environment Variables
 The application requires several environment variables to be set. These variables should be defined in a `.env` file. You can copy the `.env.template` file and fill in the necessary values.
