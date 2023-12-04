@@ -2,12 +2,15 @@ import platform
 import tkinter as tk
 from tkinter import messagebox, ttk
 import tkinter.filedialog as filedialog
+import tkinter.messagebox as messagebox
 import os
 import subprocess
 
 from dotenv import load_dotenv
 from git import Repo
 import socket
+import json
+from jsonschema import validate, ValidationError
 
 load_dotenv()
 
@@ -17,11 +20,15 @@ app_name = os.getenv("app_name")
 file_extensions = os.getenv("file_extensions")
 search_folders = os.getenv("search_folders")
 repo_path = './repo'
+json_schema_path = "./json-schemas"
+
 
 class GitGUIApp:
     def __init__(self, root):
         self.root = root
         self.root.title(app_name)
+
+        self.json_schemas = self.load_json_schemas(json_schema_path)
 
         # Frames
         left_frame = tk.Frame(root)
@@ -82,6 +89,15 @@ class GitGUIApp:
 
         self.populate_list(repo_path)
 
+    def load_json_schemas(self, schema_dir):
+        schemas = {}
+        # todo: check if folder exist
+        for file in os.listdir(schema_dir):
+            if file.endswith('.json'):
+                with open(os.path.join(schema_dir, file)) as schema_file:
+                    schemas[file] = json.load(schema_file)
+        return schemas
+
     def populate_list(self, repo_path):
         extensions = os.environ.get('file_extensions', '')
         valid_extensions = extensions.split(';')
@@ -129,6 +145,17 @@ class GitGUIApp:
         filename = self.file_list.item(item, 'values')[1]
         file_path = os.path.join(repo_path, filename)
 
+        if filename.endswith('.json'):
+            with open(file_path) as json_file:
+                json_data = json.load(json_file)
+                for _, schema in self.json_schemas.items():
+                    try:
+                        validate(instance=json_data, schema=schema)
+                        self.show_json_dialog(json_data, schema, file_path)
+                        return
+                    except ValidationError:
+                        pass
+
         if os.path.isfile(file_path):
             if platform.system() == "Windows":
                 os.startfile(file_path)
@@ -136,6 +163,112 @@ class GitGUIApp:
                 subprocess.call(["open", file_path])
             else:  # Linux
                 subprocess.call(["xdg-open", file_path])
+
+    def show_json_dialog(self, json_data, schema, file_path):
+        dialog = tk.Toplevel(self.root)
+        dialog.title(schema.get('title', 'JSON Data'))
+
+        # Create a canvas and a scrollbar
+        canvas = tk.Canvas(dialog)
+        scrollbar = tk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
+        scrollable_frame = tk.Frame(canvas)
+
+        # Configure canvas
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+
+        def on_configure(event):
+            canvas.configure(scrollregion=canvas.bbox("all"))
+
+        scrollable_frame.bind("<Configure>", on_configure)
+
+        self.widget_references = {}
+
+        row = 0
+        for prop, details in schema.get('properties', {}).items():
+            label = tk.Label(scrollable_frame, text=prop)
+            label.grid(row=row, column=0, sticky='ew', padx=10, pady=5)
+
+            value = json_data.get(prop, '')
+
+            if isinstance(value, dict):
+                nested_row = 0
+                frame = tk.Frame(scrollable_frame)
+                frame.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
+                for nested_prop, nested_details in details['properties'].items():
+                    nested_label = tk.Label(frame, text=nested_prop)
+                    nested_label.grid(row=nested_row, column=0, sticky='w', padx=10, pady=2)
+                    nested_text = tk.Text(frame, height=3, wrap='word')
+                    nested_text.insert('end', str(value.get(nested_prop, '')))
+                    nested_text.grid(row=nested_row, column=1, padx=10, pady=2, sticky='ew')
+                    frame.grid_columnconfigure(1, weight=1)
+                    nested_row += 1
+                    self.widget_references[prop] = nested_text
+            else:
+                text = tk.Text(scrollable_frame, height=3, wrap='word')
+                text.insert('end', str(value))
+                text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
+                scrollable_frame.grid_columnconfigure(1, weight=1)
+                self.widget_references[prop] = text
+            
+            row += 1
+
+        # Save button
+        save_button = tk.Button(dialog, text="Save", command=lambda: self.save_json_data(json_data, schema, file_path))
+        save_button.pack()
+
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+
+    def save_json_data(self, original_data, schema, file_path):
+        def parse_input(data, schema_properties, parent=None):
+            for prop, details in schema_properties.items():
+                if details.get('type') == 'object':
+                    # Handle nested object
+                    nested_data = data.get(prop, {})
+                    parse_input(nested_data, details['properties'], prop)
+                    data[prop] = nested_data
+                else:
+                    widget_key = f"{parent}.{prop}" if parent else prop
+                    widget = self.widget_references.get(widget_key)
+
+                    if widget:
+                        input_value = widget.get("1.0", "end-1c")  # Get text from Text widget
+
+                        # Convert input value to the correct type based on the schema
+                        if details.get('type') == 'number':
+                            try:
+                                input_value = float(input_value)
+                            except ValueError:
+                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a number.")
+                                return False
+                        elif details.get('type') == 'integer':
+                            try:
+                                input_value = int(input_value)
+                            except ValueError:
+                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a integer.")
+                                return False
+                        # Add other type conversions as needed
+
+                        data[prop] = input_value
+            return True
+
+        # Create a copy of the original data to modify
+        updated_data = original_data.copy()
+
+        if not parse_input(updated_data, schema.get('properties', {})):
+            return  # Return early if validation fails
+
+        # Validate updated data
+        try:
+            validate(instance=updated_data, schema=schema)
+            # Write back to file if validation passes
+            with open(file_path, 'w') as json_file:
+                json.dump(updated_data, json_file, indent=4)
+            messagebox.showinfo("Success", "Data saved successfully.")
+        except ValidationError as e:
+            messagebox.showerror("Validation Error", str(e))
+
 
     def save_files(self):
         if not os.path.exists(repo_path):

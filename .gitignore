@@ -3,3 +3,7 @@
 .env
 .history/**
 .venv2/**
+.venv_linux/**
+build/**
+dist/**
+.gitignore

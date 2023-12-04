@@ -1,0 +1,18 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "$id": "https://example.com/employee.schema.json",
+    "title": "small json",
+    "description": "This document records the details of an employee",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "namebla": {
+            "description": "the name",
+            "type": "string"
+        },
+        "lastname": {
+            "description": "the lastname",
+            "type": "string"
+        }
+    }
+}
