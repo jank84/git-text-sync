@@ -5,7 +5,7 @@ import tkinter.filedialog as filedialog
 import tkinter.messagebox as messagebox
 import os
 import subprocess
-
+import customtkinter as ctk
 from dotenv import load_dotenv
 from git import Repo
 import socket
@@ -31,23 +31,28 @@ class GitGUIApp:
         self.json_schemas = self.load_json_schemas(json_schema_path)
 
         # Frames
-        left_frame = tk.Frame(root)
+        left_frame = ctk.CTkFrame(root)
         left_frame.pack(side=tk.TOP, padx=10, pady=10, fill=tk.X)
-        right_frame = tk.Frame(root)
+        right_frame = ctk.CTkFrame(root)
         right_frame.pack(side=tk.TOP, padx=10, pady=10, fill=tk.X)
 
         #buttons
-        self.get_files_button = tk.Button(left_frame, text="📂 Get Files", command=self.get_files)
+        self.get_files_button = ctk.CTkButton(left_frame, text="📂 Get Files", command=self.get_files)
         self.get_files_button.pack(side=tk.LEFT)
-        self.save_files_button = tk.Button(left_frame, text="💾 Save Files", command=self.save_files)
+        self.save_files_button = ctk.CTkButton(left_frame, text="💾 Save Files", command=self.save_files)
         self.save_files_button.pack(side=tk.LEFT)
 
 
-        self.add_file_button = tk.Button(right_frame, text="➕ Add File", command=self.add_file)
+        self.add_file_button = ctk.CTkButton(right_frame, text="➕ Add File", command=self.add_file)
         self.add_file_button.pack(side=tk.RIGHT)
-        self.delete_file_button = tk.Button(right_frame, text="❌ Delete File", command=self.delete_file)
+        self.delete_file_button = ctk.CTkButton(right_frame, text="❌ Delete File", command=self.delete_file)
         self.delete_file_button.pack(side=tk.RIGHT)
 
+
+        style.configure("Treeview", background=bg_color, foreground=text_color, fieldbackground=bg_color, borderwidth=0)
+        style.map('Treeview', background=[('selected', bg_color)], foreground=[('selected', selected_color)])
+        root.bind("<<TreeviewSelect>>", lambda event: root.focus_set())
+        
         self.file_list = ttk.Treeview(root)
         self.file_list["columns"] = ("Changed", "Filename")
         self.file_list.column("#0", width=0, stretch=tk.NO)
@@ -165,13 +170,13 @@ class GitGUIApp:
                 subprocess.call(["xdg-open", file_path])
 
     def show_json_dialog(self, json_data, schema, file_path):
-        dialog = tk.Toplevel(self.root)
+        dialog = ctk.CTkToplevel(self.root)
         dialog.title(schema.get('title', 'JSON Data'))
 
         # Create a canvas and a scrollbar
-        canvas = tk.Canvas(dialog)
-        scrollbar = tk.Scrollbar(dialog, orient="vertical", command=canvas.yview)
-        scrollable_frame = tk.Frame(canvas)
+        canvas = ctk.CTkCanvas(dialog)
+        scrollbar = ctk.CTkScrollbar(dialog, command=canvas.yview)
+        scrollable_frame = ctk.CTkFrame(canvas)
 
         # Configure canvas
         canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
@@ -186,26 +191,26 @@ class GitGUIApp:
 
         row = 0
         for prop, details in schema.get('properties', {}).items():
-            label = tk.Label(scrollable_frame, text=prop)
+            label = ctk.CTkLabel(scrollable_frame, text=prop)
             label.grid(row=row, column=0, sticky='ew', padx=10, pady=5)
 
             value = json_data.get(prop, '')
 
             if isinstance(value, dict):
                 nested_row = 0
-                frame = tk.Frame(scrollable_frame)
+                frame = ctk.CTkFrame(scrollable_frame)
                 frame.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
                 for nested_prop, nested_details in details['properties'].items():
-                    nested_label = tk.Label(frame, text=nested_prop)
+                    nested_label = ctk.CTkLabel(frame, text=nested_prop)
                     nested_label.grid(row=nested_row, column=0, sticky='w', padx=10, pady=2)
-                    nested_text = tk.Text(frame, height=3, wrap='word')
+                    nested_text = ctk.CTkTextbox(frame, height=60, wrap='word')
                     nested_text.insert('end', str(value.get(nested_prop, '')))
                     nested_text.grid(row=nested_row, column=1, padx=10, pady=2, sticky='ew')
                     frame.grid_columnconfigure(1, weight=1)
                     nested_row += 1
                     self.widget_references[prop] = nested_text
             else:
-                text = tk.Text(scrollable_frame, height=3, wrap='word')
+                text = ctk.CTkTextbox(scrollable_frame, height=60, wrap='word')
                 text.insert('end', str(value))
                 text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
                 scrollable_frame.grid_columnconfigure(1, weight=1)
@@ -214,7 +219,7 @@ class GitGUIApp:
             row += 1
 
         # Save button
-        save_button = tk.Button(dialog, text="Save", command=lambda: self.save_json_data(json_data, schema, file_path))
+        save_button = ctk.CTkButton(dialog, text="Save", command=lambda: self.save_json_data(json_data, schema, file_path))
         save_button.pack()
 
         canvas.pack(side="left", fill="both", expand=True)
@@ -265,7 +270,7 @@ class GitGUIApp:
             # Write back to file if validation passes
             with open(file_path, 'w') as json_file:
                 json.dump(updated_data, json_file, indent=4)
-            messagebox.showinfo("Success", "Data saved successfully.")
+            # messagebox.showinfo("Success", "Data saved successfully.")
         except ValidationError as e:
             messagebox.showerror("Validation Error", str(e))
 
@@ -324,10 +329,14 @@ class GitGUIApp:
         # Configure tag for new files
         self.file_list.tag_configure('new_file', background='lime green')
 
-root = tk.Tk()
+root = ctk.CTk()
 root.geometry("1024x768")
+###Treeview Customisation (theme colors are selected)
+bg_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
+text_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
+selected_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
 style = ttk.Style()
-style.theme_use("clam")
+style.theme_use("default")
 
 
 app = GitGUIApp(root)
