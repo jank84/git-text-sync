@@ -169,51 +169,65 @@ class GitGUIApp:
     def show_json_dialog(self, json_data, schema, file_path):
         dialog = ctk.CTkToplevel(self.root)
         dialog.title(schema.get('title', 'JSON Data'))
-        
-        dialog.transient(self.root)
-        dialog.focus_set()
 
         self.widget_references = {}
+        
+        if schema.get('type') == 'array':
+            # Handle array at root
+            self.create_array_ui(dialog, json_data, 'root', schema.get('items', {}))
+        else:
+            # Handle normal object with properties
+            self.process_properties(dialog, json_data, schema.get('properties', {}))
 
-        row = 0
-        for prop, details in schema.get('properties', {}).items():
-            label = ctk.CTkLabel(dialog, text=prop)
-            label.grid(row=row, column=0, padx=10, pady=5)
-
-            value = json_data.get(prop, '')
-
-            if isinstance(value, dict):
-                nested_row = 0
-                frame = ctk.CTkFrame(dialog)
-                frame.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
-                for nested_prop, nested_details in details['properties'].items():
-                    nested_label = ctk.CTkLabel(frame, text=nested_prop)
-                    nested_label.grid(row=nested_row, column=0, padx=10, pady=2)
-                    nested_text = ctk.CTkEntry(frame, height=64)
-                    nested_text.insert(0, str(value.get(nested_prop, '')))
-                    nested_text.grid(row=nested_row, column=1, padx=10, pady=2, sticky='ew')
-                    # nested_text = tk.Text(dialog, height=3, wrap='word')
-                    # nested_text.insert('end', str(value))
-                    # nested_text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
-                    frame.grid_columnconfigure(1, weight=1)
-                    self.widget_references[f"{prop}.{nested_prop}"] = nested_text
-                    nested_row += 1
-            else:
-                text = ctk.CTkEntry(dialog, height=64)
-                text.insert(0, str(value))
-                text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
-                # text = tk.Text(dialog, height=3, wrap='word')
-                # text.insert('end', str(value))
-                # text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
-                self.widget_references[prop] = text
-
-            row += 1
-            
-            dialog.grid_rowconfigure(0, weight=1)
-            dialog.grid_columnconfigure(1, weight=1)
+        dialog.grid_rowconfigure(0, weight=1)
+        dialog.grid_columnconfigure(1, weight=1)
 
 
         dialog.protocol("WM_DELETE_WINDOW", lambda: self.on_dialog_close(dialog, json_data, schema, file_path))
+
+
+
+    def process_properties(self, parent, data, properties, parent_key=''):
+            row = 0
+            for prop, details in properties.items():
+                label = ctk.CTkLabel(parent, text=prop)
+                label.grid(row=row, column=0, padx=10, pady=5)
+
+                value = data.get(prop, '')
+                widget_key = f"{parent_key}.{prop}" if parent_key else prop
+
+                if details.get('type') == 'object':
+                    # Handle nested object
+                    nested_frame = ctk.CTkFrame(parent)
+                    nested_frame.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
+                    self.process_properties(nested_frame, value, details.get('properties', {}), widget_key)
+                elif details.get('type') == 'array':
+                    # Handle array
+                    array_frame = ctk.CTkFrame(parent)
+                    array_frame.grid(row=row, column=1, padx=10, pady=2, sticky='ew')
+                    self.create_array_ui(array_frame, value, widget_key, details.get('items', {}))
+                else:
+                    # Handle simple types
+                    text = ctk.CTkEntry(parent)
+                    text.insert(0, str(value))
+                    text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
+                    self.widget_references[widget_key] = text
+
+                row += 1
+
+    def create_array_ui(self, parent, array_data, array_key, item_schema):
+            for i, item in enumerate(array_data):
+                if item_schema.get('type') == 'object':
+                    # Handle array of objects
+                    item_frame = ctk.CTkFrame(parent)
+                    item_frame.grid(row=i, column=0, padx=10, pady=2, sticky='ew')
+                    self.process_properties(item_frame, item, item_schema.get('properties', {}), f"{array_key}[{i}]")
+                else:
+                    # Handle array of simple types
+                    entry = ctk.CTkEntry(parent)
+                    entry.insert(0, str(item))
+                    entry.grid(row=i, column=0, padx=10, pady=2, sticky='ew')
+                    self.widget_references[f"{array_key}[{i}]"] = entry
 
     def on_dialog_close(self, dialog, original_data, schema, file_path):
         # Attempt to save the data when dialog is closed
