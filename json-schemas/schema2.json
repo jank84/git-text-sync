@@ -1,17 +1,20 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "$id": "https://example.com/employee.schema.json",
     "title": "Artikel",
     "description": "Example of a json schema for an article",
     "type": "object",
     "additionalProperties": false,
     "properties": {
-        "namebla": {
-            "description": "the name",
+        "title": {
+            "description": "the title",
             "type": "string"
         },
-        "lastname": {
-            "description": "the lastname",
+        "description": {
+            "description": "short description",
+            "type": "string"
+        },
+        "author": {
+            "description": "author name",
             "type": "string"
         }
     }

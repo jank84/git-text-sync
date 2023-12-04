@@ -189,19 +189,29 @@ class GitGUIApp:
                 for nested_prop, nested_details in details['properties'].items():
                     nested_label = ctk.CTkLabel(frame, text=nested_prop)
                     nested_label.grid(row=nested_row, column=0, padx=10, pady=2)
-                    nested_text = ctk.CTkEntry(frame)
+                    nested_text = ctk.CTkEntry(frame, height=64)
                     nested_text.insert(0, str(value.get(nested_prop, '')))
                     nested_text.grid(row=nested_row, column=1, padx=10, pady=2, sticky='ew')
+                    # nested_text = tk.Text(dialog, height=3, wrap='word')
+                    # nested_text.insert('end', str(value))
+                    # nested_text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
                     frame.grid_columnconfigure(1, weight=1)
                     self.widget_references[f"{prop}.{nested_prop}"] = nested_text
                     nested_row += 1
             else:
-                text = ctk.CTkEntry(dialog)
+                text = ctk.CTkEntry(dialog, height=64)
                 text.insert(0, str(value))
                 text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
+                # text = tk.Text(dialog, height=3, wrap='word')
+                # text.insert('end', str(value))
+                # text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
                 self.widget_references[prop] = text
 
             row += 1
+            
+            dialog.grid_rowconfigure(0, weight=1)
+            dialog.grid_columnconfigure(1, weight=1)
+
 
         dialog.protocol("WM_DELETE_WINDOW", lambda: self.on_dialog_close(dialog, json_data, schema, file_path))
 
@@ -224,6 +234,7 @@ class GitGUIApp:
 
                     if widget:
                         input_value = widget.get()
+                        # input_value = widget.get("1.0", "end-1c")
 
                         # Convert input value to the correct type based on the schema
                         if details.get('type') == 'number':
