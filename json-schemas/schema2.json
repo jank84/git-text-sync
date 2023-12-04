@@ -1,8 +1,8 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
     "$id": "https://example.com/employee.schema.json",
-    "title": "small json",
-    "description": "This document records the details of an employee",
+    "title": "Artikel",
+    "description": "Example of a json schema for an article",
     "type": "object",
     "additionalProperties": false,
     "properties": {

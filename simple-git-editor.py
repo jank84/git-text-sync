@@ -11,6 +11,7 @@ from git import Repo
 import socket
 import json
 from jsonschema import validate, ValidationError
+from pathlib import Path
 
 load_dotenv()
 
@@ -33,8 +34,6 @@ class GitGUIApp:
         # Frames
         left_frame = ctk.CTkFrame(root)
         left_frame.pack(side=tk.TOP, padx=10, pady=10, fill=tk.X)
-        right_frame = ctk.CTkFrame(root)
-        right_frame.pack(side=tk.TOP, padx=10, pady=10, fill=tk.X)
 
         #buttons
         self.get_files_button = ctk.CTkButton(left_frame, text="📂 Get Files", command=self.get_files)
@@ -43,9 +42,9 @@ class GitGUIApp:
         self.save_files_button.pack(side=tk.LEFT)
 
 
-        self.add_file_button = ctk.CTkButton(right_frame, text="➕ Add File", command=self.add_file)
+        self.add_file_button = ctk.CTkButton(left_frame, text="➕ Add File", command=self.add_file)
         self.add_file_button.pack(side=tk.RIGHT)
-        self.delete_file_button = ctk.CTkButton(right_frame, text="❌ Delete File", command=self.delete_file)
+        self.delete_file_button = ctk.CTkButton(left_frame, text="❌ Delete File", command=self.delete_file)
         self.delete_file_button.pack(side=tk.RIGHT)
 
 
@@ -62,10 +61,9 @@ class GitGUIApp:
         self.file_list.heading("Filename", text="Filename", anchor=tk.W)
         self.file_list.bind("<Double-1>", self.on_file_click)
         self.file_list.pack(fill=tk.BOTH, expand=True, side=tk.BOTTOM)
-       
-        self.file_states = {}
-        self.check_for_changes()
+
         self.populate_list(repo_path)
+        self.check_for_changes()
 
     def get_files(self):
         if not repo_url or not git_access_token:
@@ -116,7 +114,6 @@ class GitGUIApp:
             folders = ['']
         
         self.file_list.delete(*self.file_list.get_children())
-        self.file_states = {}
 
         for folder in folders:
             folder_path = os.path.join(repo_path, folder)
@@ -125,26 +122,24 @@ class GitGUIApp:
                     if any(filename.endswith(ext) for ext in valid_extensions):
                         file_rel_path = os.path.join(folder, filename)
                         file_full_path = os.path.join(folder_path, filename)
-                        self.file_states[file_rel_path] = os.path.getmtime(file_full_path)
                         self.file_list.insert("", tk.END, values=("", file_rel_path), tags=('unchanged',))
         # tag for modified files
-        self.file_list.tag_configure('modified', background='yellow')
+        # self.file_list.tag_configure('modified', background='light_yellow')
                 
     def check_for_changes(self):
-        for filename in self.file_states:
-            file_path = os.path.join(repo_path, filename)
-            if os.path.exists(file_path) and os.path.getmtime(file_path) != self.file_states[filename]:
-                # File has been modified
-                self.file_states[filename] = os.path.getmtime(file_path)
-                self.highlight_modified(filename)
-
+        repo = Repo(repo_path)
+        changed_files = [item.a_path for item in repo.index.diff(None)] + repo.untracked_files
+        for filename in changed_files:
+            self.highlight_modified(filename)
         # Schedule next check
         self.root.after(5000, self.check_for_changes)
 
     def highlight_modified(self, filename):
         for item in self.file_list.get_children():
-            if self.file_list.item(item, 'values')[1] == filename:
-                self.file_list.item(item, values=("⭐", filename), tags=('modified',))
+            treeview_filelist_item = os.path.normpath(os.path.normpath(self.file_list.item(item, 'values')[1]))
+            filename_norm = os.path.normpath(filename)
+            if treeview_filelist_item == filename_norm:
+                self.file_list.item(item, values=("✏️", filename), tags=('modified',))
                 break
 
     def on_file_click(self, event):
@@ -174,6 +169,9 @@ class GitGUIApp:
     def show_json_dialog(self, json_data, schema, file_path):
         dialog = ctk.CTkToplevel(self.root)
         dialog.title(schema.get('title', 'JSON Data'))
+        
+        dialog.transient(self.root)
+        dialog.focus_set()
 
         self.widget_references = {}
 
@@ -286,7 +284,6 @@ class GitGUIApp:
             if os.path.exists(file_path):
                 os.remove(file_path)
                 self.file_list.delete(selected_item)
-                del self.file_states[filename]
 
     def add_file(self):
         extensions = os.environ.get('file_extensions', '')
@@ -312,10 +309,9 @@ class GitGUIApp:
 
             # Add to Treeview
             self.file_list.insert("", tk.END, values=("➕", filename), tags=('new_file',))
-            self.file_states[filename] = os.path.getmtime(new_file_path)
 
         # Configure tag for new files
-        self.file_list.tag_configure('new_file', background='lime green')
+        # self.file_list.tag_configure('new_file', background='lime green')
 
 root = ctk.CTk()
 root.geometry("1024x768")
@@ -323,6 +319,7 @@ root.geometry("1024x768")
 bg_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkFrame"]["fg_color"])
 text_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkLabel"]["text_color"])
 selected_color = root._apply_appearance_mode(ctk.ThemeManager.theme["CTkButton"]["fg_color"])
+
 style = ttk.Style()
 style.theme_use("default")
 
