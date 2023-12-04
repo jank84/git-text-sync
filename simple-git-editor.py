@@ -97,6 +97,8 @@ class GitGUIApp:
     def load_json_schemas(self, schema_dir):
         schemas = {}
         # todo: check if folder exist
+        if not os.path.isdir(schema_dir):
+            return schemas
         for file in os.listdir(schema_dir):
             if file.endswith('.json'):
                 with open(os.path.join(schema_dir, file)) as schema_file:
@@ -173,57 +175,42 @@ class GitGUIApp:
         dialog = ctk.CTkToplevel(self.root)
         dialog.title(schema.get('title', 'JSON Data'))
 
-        # Create a canvas and a scrollbar
-        canvas = ctk.CTkCanvas(dialog)
-        scrollbar = ctk.CTkScrollbar(dialog, command=canvas.yview)
-        scrollable_frame = ctk.CTkFrame(canvas)
-
-        # Configure canvas
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
-        canvas.configure(yscrollcommand=scrollbar.set)
-
-        def on_configure(event):
-            canvas.configure(scrollregion=canvas.bbox("all"))
-
-        scrollable_frame.bind("<Configure>", on_configure)
-
         self.widget_references = {}
 
         row = 0
         for prop, details in schema.get('properties', {}).items():
-            label = ctk.CTkLabel(scrollable_frame, text=prop)
-            label.grid(row=row, column=0, sticky='ew', padx=10, pady=5)
+            label = ctk.CTkLabel(dialog, text=prop)
+            label.grid(row=row, column=0, padx=10, pady=5)
 
             value = json_data.get(prop, '')
 
             if isinstance(value, dict):
                 nested_row = 0
-                frame = ctk.CTkFrame(scrollable_frame)
+                frame = ctk.CTkFrame(dialog)
                 frame.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
                 for nested_prop, nested_details in details['properties'].items():
                     nested_label = ctk.CTkLabel(frame, text=nested_prop)
-                    nested_label.grid(row=nested_row, column=0, sticky='w', padx=10, pady=2)
-                    nested_text = ctk.CTkTextbox(frame, height=60, wrap='word')
-                    nested_text.insert('end', str(value.get(nested_prop, '')))
+                    nested_label.grid(row=nested_row, column=0, padx=10, pady=2)
+                    nested_text = ctk.CTkEntry(frame)
+                    nested_text.insert(0, str(value.get(nested_prop, '')))
                     nested_text.grid(row=nested_row, column=1, padx=10, pady=2, sticky='ew')
                     frame.grid_columnconfigure(1, weight=1)
+                    self.widget_references[f"{prop}.{nested_prop}"] = nested_text
                     nested_row += 1
-                    self.widget_references[prop] = nested_text
             else:
-                text = ctk.CTkTextbox(scrollable_frame, height=60, wrap='word')
-                text.insert('end', str(value))
+                text = ctk.CTkEntry(dialog)
+                text.insert(0, str(value))
                 text.grid(row=row, column=1, padx=10, pady=5, sticky='ew')
-                scrollable_frame.grid_columnconfigure(1, weight=1)
                 self.widget_references[prop] = text
-            
+
             row += 1
 
-        # Save button
-        save_button = ctk.CTkButton(dialog, text="Save", command=lambda: self.save_json_data(json_data, schema, file_path))
-        save_button.pack()
+        dialog.protocol("WM_DELETE_WINDOW", lambda: self.on_dialog_close(dialog, json_data, schema, file_path))
 
-        canvas.pack(side="left", fill="both", expand=True)
-        scrollbar.pack(side="right", fill="y")
+    def on_dialog_close(self, dialog, original_data, schema, file_path):
+        # Attempt to save the data when dialog is closed
+        if self.save_json_data(original_data, schema, file_path):
+            dialog.destroy()  # Only close the dialog if save was successful
 
     def save_json_data(self, original_data, schema, file_path):
         def parse_input(data, schema_properties, parent=None):
@@ -238,7 +225,7 @@ class GitGUIApp:
                     widget = self.widget_references.get(widget_key)
 
                     if widget:
-                        input_value = widget.get("1.0", "end-1c")  # Get text from Text widget
+                        input_value = widget.get()
 
                         # Convert input value to the correct type based on the schema
                         if details.get('type') == 'number':
@@ -267,12 +254,13 @@ class GitGUIApp:
         # Validate updated data
         try:
             validate(instance=updated_data, schema=schema)
-            # Write back to file if validation passes
             with open(file_path, 'w') as json_file:
                 json.dump(updated_data, json_file, indent=4)
             # messagebox.showinfo("Success", "Data saved successfully.")
+            return True
         except ValidationError as e:
             messagebox.showerror("Validation Error", str(e))
+            return False
 
 
     def save_files(self):
