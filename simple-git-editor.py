@@ -171,8 +171,6 @@ class GitGUIApp:
 
         self.widget_references = {}
         
-        # TODO: set focus
-        
         if schema.get('type') == 'array':
             # Handle array at root
             self.create_array_ui(dialog, json_data, 'root', schema.get('items', {}))
@@ -239,24 +237,26 @@ class GitGUIApp:
 
     def save_json_data(self, original_data, schema, file_path):
         def update_array_data(array_data, item_schema, parent_key):
-            updated_array = array_data.copy()  # Start with a copy of the original array data
-            i = 0
-            while True:
-                item_key = f"{parent_key}[{i}]"
-                if item_key in self.widget_references:
-                    item_widget = self.widget_references[item_key]
-                    item_value = item_widget.get()
-                    if item_schema.get('type') == 'object':
-                        item_value = json.loads(item_value)  # Assuming JSON string for objects
-
-                    # Update or append the item value
-                    if i < len(updated_array):
-                        updated_array[i] = item_value
-                    else:
-                        updated_array.append(item_value)
-                    i += 1
+            updated_array = []
+            for i, item in enumerate(array_data):
+                if item_schema.get('type') == 'object':
+                    # For each object in the array, update its properties
+                    updated_object = {}
+                    for prop in item_schema.get('properties', {}):
+                        item_key = f"{parent_key}[{i}].{prop}"
+                        if item_key in self.widget_references:
+                            widget = self.widget_references[item_key]
+                            prop_value = widget.get()
+                            # Convert prop_value to the correct type as needed
+                            updated_object[prop] = prop_value
+                    updated_array.append(updated_object)
                 else:
-                    break
+                    # Handle simple types in the array
+                    item_key = f"{parent_key}[{i}]"
+                    if item_key in self.widget_references:
+                        widget = self.widget_references[item_key]
+                        updated_array.append(widget.get())
+
             return updated_array
 
         def update_data(data, schema_properties, parent_key=''):
