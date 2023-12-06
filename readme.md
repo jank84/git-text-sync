@@ -52,7 +52,8 @@ After setting up the environment variables in the `.env` file, run the applicati
 python simple-git-editor.py
 ```
 ### The application can also be packed into a single standalone binary
-tbd
+Run `build_unix.bat` or `build_unix.sh` to create a zip file that contains the packed run folder.
+To to is add a `.env` file and optionally a `json-schemas/` folder like `json-schemas/`.
 
 ## Dependencies
 - GitPython: For Git operations.
