@@ -3,3 +3,8 @@
 .env
 .history/**
 .venv2/**
+.venv_linux/**
+build/**
+dist/**
+.gitignore
+simple-git-editor.zip

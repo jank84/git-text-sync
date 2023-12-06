@@ -1,0 +1,21 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "title": "Artikel",
+    "description": "Example of a json schema for an article",
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+        "title": {
+            "description": "the title",
+            "type": "string"
+        },
+        "description": {
+            "description": "short description",
+            "type": "string"
+        },
+        "author": {
+            "description": "author name",
+            "type": "string"
+        }
+    }
+}
