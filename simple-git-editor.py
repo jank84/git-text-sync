@@ -94,7 +94,6 @@ class GitGUIApp:
 
     def load_json_schemas(self, schema_dir):
         schemas = {}
-        # todo: check if folder exist
         if not os.path.isdir(schema_dir):
             return schemas
         for file in os.listdir(schema_dir):
@@ -121,12 +120,12 @@ class GitGUIApp:
                 for filename in os.listdir(folder_path):
                     if any(filename.endswith(ext) for ext in valid_extensions):
                         file_rel_path = os.path.join(folder, filename)
-                        file_full_path = os.path.join(folder_path, filename)
                         self.file_list.insert("", tk.END, values=("", file_rel_path), tags=('unchanged',))
         # tag for modified files
         # self.file_list.tag_configure('modified', background='light_yellow')
                 
     def check_for_changes(self):
+        if not os.path.isdir(repo_path): return
         repo = Repo(repo_path)
         changed_files = [item.a_path for item in repo.index.diff(None)] + repo.untracked_files
         for filename in changed_files:
@@ -172,6 +171,8 @@ class GitGUIApp:
 
         self.widget_references = {}
         
+        # TODO: set focus
+        
         if schema.get('type') == 'array':
             # Handle array at root
             self.create_array_ui(dialog, json_data, 'root', schema.get('items', {}))
@@ -182,8 +183,10 @@ class GitGUIApp:
         dialog.grid_rowconfigure(0, weight=1)
         dialog.grid_columnconfigure(1, weight=1)
 
-
         dialog.protocol("WM_DELETE_WINDOW", lambda: self.on_dialog_close(dialog, json_data, schema, file_path))
+        
+        dialog.transient(self.root)
+        dialog.focus_set()
 
 
 
@@ -235,44 +238,50 @@ class GitGUIApp:
             dialog.destroy()  # Only close the dialog if save was successful
 
     def save_json_data(self, original_data, schema, file_path):
-        def parse_input(data, schema_properties, parent=None):
-            for prop, details in schema_properties.items():
-                if details.get('type') == 'object':
-                    # Handle nested object
-                    nested_data = data.get(prop, {})
-                    parse_input(nested_data, details['properties'], prop)
-                    data[prop] = nested_data
+        def update_array_data(array_data, item_schema, parent_key):
+            updated_array = array_data.copy()  # Start with a copy of the original array data
+            i = 0
+            while True:
+                item_key = f"{parent_key}[{i}]"
+                if item_key in self.widget_references:
+                    item_widget = self.widget_references[item_key]
+                    item_value = item_widget.get()
+                    if item_schema.get('type') == 'object':
+                        item_value = json.loads(item_value)  # Assuming JSON string for objects
+
+                    # Update or append the item value
+                    if i < len(updated_array):
+                        updated_array[i] = item_value
+                    else:
+                        updated_array.append(item_value)
+                    i += 1
                 else:
-                    widget_key = f"{parent}.{prop}" if parent else prop
-                    widget = self.widget_references.get(widget_key)
+                    break
+            return updated_array
 
-                    if widget:
+        def update_data(data, schema_properties, parent_key=''):
+            for prop, details in schema_properties.items():
+                widget_key = f"{parent_key}.{prop}" if parent_key else prop
+
+                if details.get('type') == 'object':
+                    nested_data = data.get(prop, {})
+                    update_data(nested_data, details['properties'], widget_key)
+                    data[prop] = nested_data
+                elif details.get('type') == 'array':
+                    array_data = update_array_data(data[prop], details['items'], widget_key)
+                    data[prop] = array_data
+                else:
+                    if widget_key in self.widget_references:
+                        widget = self.widget_references[widget_key]
                         input_value = widget.get()
-                        # input_value = widget.get("1.0", "end-1c")
-
-                        # Convert input value to the correct type based on the schema
-                        if details.get('type') == 'number':
-                            try:
-                                input_value = float(input_value)
-                            except ValueError:
-                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a number.")
-                                return False
-                        elif details.get('type') == 'integer':
-                            try:
-                                input_value = int(input_value)
-                            except ValueError:
-                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a integer.")
-                                return False
-                        # Add other type conversions as needed
-
                         data[prop] = input_value
-            return True
 
-        # Create a copy of the original data to modify
-        updated_data = original_data.copy()
-
-        if not parse_input(updated_data, schema.get('properties', {})):
-            return  # Return early if validation fails
+        # Check if the root of the schema is an array
+        if schema.get('type') == 'array':
+            updated_data = update_array_data(original_data, schema.get('items', {}), 'root')
+        else:
+            updated_data = original_data.copy()
+            update_data(updated_data, schema.get('properties', {}))
 
         # Validate updated data
         try:
