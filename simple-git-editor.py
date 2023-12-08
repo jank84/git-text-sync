@@ -220,7 +220,7 @@ class GitGUIApp:
             for i, item in enumerate(array_data):
                 if item_schema.get('type') == 'object':
                     # Handle array of objects
-                    item_frame = ctk.CTkFrame(parent)
+                    item_frame = ctk.CTkFrame(parent, border_color="grey", border_width=2)
                     item_frame.grid(row=i, column=0, padx=10, pady=2, sticky='ew')
                     self.process_properties(item_frame, item, item_schema.get('properties', {}), f"{array_key}[{i}]")
                 else:
@@ -269,12 +269,23 @@ class GitGUIApp:
                     data[prop] = nested_data
                 elif details.get('type') == 'array':
                     array_data = update_array_data(data[prop], details['items'], widget_key)
-                    data[prop] = array_data
+                    data[prop] = array_data               
                 else:
                     if widget_key in self.widget_references:
                         widget = self.widget_references[widget_key]
                         input_value = widget.get()
-                        data[prop] = input_value
+                        if details.get('type') == 'number':
+                            try:
+                                data[prop] = float(input_value)
+                            except ValueError:
+                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a number.")
+                        elif details.get('type') == 'integer':
+                            try:
+                                data[prop] = int(input_value)
+                            except ValueError:
+                                messagebox.showerror("Validation Error", f"Value for '{prop}' should be a integer.")
+                        else:
+                            data[prop] = input_value
 
         # Check if the root of the schema is an array
         if schema.get('type') == 'array':
